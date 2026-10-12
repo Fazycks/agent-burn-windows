@@ -26,16 +26,29 @@ export function MenuPopover() {
   useLayoutEffect(() => {
     const node = root.current;
     if (!node || !native.isTauri()) return;
-    let last = 0;
-    const observer = new ResizeObserver(() => {
-      const height = Math.ceil(node.getBoundingClientRect().height);
-      if (height !== last) {
-        last = height;
+    // Windows can give the borderless window more (or less) room than requested,
+    // so the measured overshoot is subtracted until the viewport matches the content.
+    let requested = 0;
+    let overshoot = 0;
+    const fit = () => {
+      const height = Math.ceil(node.getBoundingClientRect().height) - overshoot;
+      if (height !== requested) {
+        requested = height;
         void native.popoverResize(height).catch(() => {});
       }
-    });
+    };
+    const measure = () => {
+      if (!requested) return;
+      overshoot = window.innerHeight - requested;
+      fit();
+    };
+    const observer = new ResizeObserver(fit);
     observer.observe(node);
-    return () => observer.disconnect();
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
   }, []);
 
   useEffect(() => {

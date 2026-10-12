@@ -227,6 +227,13 @@ fn open_dashboard(app: &AppHandle) {
     }
 }
 
+/// The version in the URL keeps WebView2 from serving the previous version's
+/// cached frontend after an update.
+fn app_url(app: &AppHandle, window: &str) -> WebviewUrl {
+    let version = &app.package_info().version;
+    WebviewUrl::App(format!("index.html?window={window}&v={version}").into())
+}
+
 fn open_settings(app: &AppHandle, tab: Option<String>) {
     hide_popover(app.clone());
     if let Some(window) = app.get_webview_window("settings") {
@@ -239,7 +246,7 @@ fn open_settings(app: &AppHandle, tab: Option<String>) {
         return;
     }
     let query = tab.map(|t| format!("&tab={t}")).unwrap_or_default();
-    let url = WebviewUrl::App(format!("index.html?window=settings{query}").into());
+    let url = app_url(app, &format!("settings{query}"));
     if let Ok(window) = WebviewWindowBuilder::new(app, "settings", url)
         .title("Agent Burn Settings")
         .inner_size(560.0, 600.0)
@@ -258,11 +265,25 @@ fn open_settings(app: &AppHandle, tab: Option<String>) {
     }
 }
 
+/// The dashboard window; built here rather than in tauri.conf.json so its URL carries the version.
+fn build_main(app: &AppHandle) -> tauri::Result<WebviewWindow> {
+    WebviewWindowBuilder::new(app, "main", app_url(app, "main"))
+        .title("Agent Burn")
+        .inner_size(1240.0, 820.0)
+        .min_inner_size(980.0, 650.0)
+        .decorations(false)
+        .shadow(true)
+        .visible(false)
+        .center()
+        .additional_browser_args(BROWSER_ARGS)
+        .build()
+}
+
 fn build_popover(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     let window = WebviewWindowBuilder::new(
         app,
         "popover",
-        WebviewUrl::App("index.html?window=popover".into()),
+        app_url(app, "popover"),
     )
     .title("Agent Burn")
     .inner_size(440.0, 700.0)
@@ -464,9 +485,10 @@ pub fn run() {
         .setup(move |app| {
             let handle = app.handle().clone();
             build_tray(&handle)?;
+            let main = build_main(&handle);
             let _ = build_popover(&handle);
             let menu_bar_only = read_menu_bar_only();
-            if let Some(main) = app.get_webview_window("main") {
+            if let Ok(main) = main {
                 let _ = main.set_skip_taskbar(menu_bar_only);
                 if !menu_bar_only && !launched_hidden {
                     let _ = main.show();

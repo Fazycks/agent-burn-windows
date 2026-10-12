@@ -44,6 +44,12 @@ catalogs:
     type-fest: ^4.41.0
     valibot: ^1.1.0
     xdg-basedir: ^5.1.0
+  windows:
+    '@tauri-apps/api': 2.12.1
+    '@tauri-apps/cli': 2.12.1
+    '@tauri-apps/plugin-autostart': 2.7.0
+    '@tauri-apps/plugin-dialog': 2.8.1
+    '@tauri-apps/plugin-opener': 2.7.0
   types:
     '@types/node': ^24.10.1
     '@types/react': ^19.1.13
@@ -75,6 +81,7 @@ overrides:
 # Explicitly allow build scripts for packages that require them
 # (replaces onlyBuiltDependencies)
 allowBuilds:
+  '@tauri-apps/cli': true
   esbuild: true
   sharp: true
   sqlite3: true

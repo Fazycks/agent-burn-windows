@@ -3,6 +3,7 @@ mod cli;
 mod quota;
 mod startup;
 mod storage;
+mod updater;
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -189,6 +190,26 @@ fn startup_set(app: AppHandle, enabled: bool) -> Result<bool, String> {
     let enabled = sync_startup(&app);
     let _ = app.emit("startup:changed", enabled);
     result.map(|_| enabled)
+}
+
+#[tauri::command]
+async fn update_check(app: AppHandle) -> Result<Option<updater::Update>, String> {
+    let current = app.package_info().version.to_string();
+    tauri::async_runtime::spawn_blocking(move || updater::check(&current))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn update_install(app: AppHandle) -> Result<(), String> {
+    // Checked again here so the webview never chooses what gets installed.
+    let current = app.package_info().version.to_string();
+    tauri::async_runtime::spawn_blocking(move || match updater::check(&current)? {
+        Some(update) => updater::install(&app, &update, false),
+        None => Err("Agent Burn is already up to date.".into()),
+    })
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -464,13 +485,13 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-fn read_menu_bar_only() -> bool {
+fn read_pref(key: &str, default: bool) -> bool {
     storage::read("preferences.json")
         .ok()
         .flatten()
         .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
-        .and_then(|value| value.get("menuBarOnly").and_then(|v| v.as_bool()))
-        .unwrap_or(false)
+        .and_then(|value| value.get(key).and_then(|v| v.as_bool()))
+        .unwrap_or(default)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -503,6 +524,8 @@ pub fn run() {
             background_set,
             startup_status,
             startup_set,
+            update_check,
+            update_install,
             set_tray_status,
             show_dashboard,
             show_settings,
@@ -514,10 +537,14 @@ pub fn run() {
         .setup(move |app| {
             let handle = app.handle().clone();
             startup::repair();
+            // Once per process start: the windows open and close while the app keeps running.
+            if !cfg!(debug_assertions) && read_pref("automaticallyCheckForUpdates", true) {
+                updater::on_launch(handle.clone(), launched_hidden);
+            }
             build_tray(&handle)?;
             let main = build_main(&handle);
             let _ = build_popover(&handle);
-            let menu_bar_only = read_menu_bar_only();
+            let menu_bar_only = read_pref("menuBarOnly", false);
             if let Ok(main) = main {
                 let _ = main.set_skip_taskbar(menu_bar_only);
                 if !menu_bar_only && !launched_hidden {

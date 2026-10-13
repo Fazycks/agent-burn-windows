@@ -2,7 +2,6 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./theme/theme.css";
 import * as native from "./lib/native";
-import { automaticUpdateCheck } from "./lib/updater";
 import { createStore } from "./store/UsageStore";
 import { DashboardView } from "./views/DashboardView";
 import { MenuPopover } from "./views/MenuPopover";
@@ -53,12 +52,6 @@ async function boot() {
   );
   if (kind === "main" && native.isTauri()) {
     await store.start();
-    // automaticUpdateCheck keeps a one-day gap itself, like Sparkle's schedule.
-    const check = () => {
-      if (store.prefs.automaticallyCheckForUpdates) void automaticUpdateCheck();
-    };
-    setTimeout(check, 10_000);
-    setInterval(check, 3_600_000);
   }
 }
 

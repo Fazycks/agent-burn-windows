@@ -60,6 +60,11 @@ export const backgroundStatus = () => invoke<BackgroundStatus>("background_statu
 export const backgroundSet = (enabled: boolean) =>
   invoke<BackgroundStatus>("background_set", { enabled });
 
+export const updateCheck = () => invoke<{ version: string } | null>("update_check");
+
+/** Downloads, verifies and runs the installer; Agent Burn quits and restarts. */
+export const updateInstall = () => invoke<void>("update_install");
+
 export const startupStatus = () => invoke<boolean>("startup_status");
 
 /** Resolves to the state actually registered, which the tray menu mirrors. */

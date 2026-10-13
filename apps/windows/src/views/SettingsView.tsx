@@ -401,18 +401,23 @@ function UpdateSettings() {
     <Form>
       <Section
         title="App updates"
-        footer={<Caption>Updates are delivered from the open-source GitHub releases.</Caption>}
+        footer={
+          <Caption>
+            Checked each time Agent Burn starts, then installed in the background from the open-source GitHub
+            releases. Agent Burn restarts by itself.
+          </Caption>
+        }
       >
-        <Row label="Automatically check for updates">
+        <Row label="Automatically install updates">
           <Toggle
-            label="Automatically check for updates"
+            label="Automatically install updates"
             on={store.prefs.automaticallyCheckForUpdates}
             onChange={(value) => void store.setPrefs({ automaticallyCheckForUpdates: value })}
           />
         </Row>
         <Row>
           <span style={{ flex: 1 }} />
-          <button className="bordered-button small" onClick={() => void checkForUpdates(true)}>
+          <button className="bordered-button small" onClick={() => void checkForUpdates()}>
             Check for Updates…
           </button>
         </Row>

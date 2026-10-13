@@ -1,6 +1,6 @@
 [package]
 name = "agent-burn-windows"
-version = "0.1.16"
+version = "0.1.17"
 description = "Agent Burn for Windows"
 authors = ["Agent Burn contributors"]
 license = "MIT"
@@ -22,6 +22,7 @@ tauri-plugin-single-instance = "=2.5.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+sha2 = "=0.10.9"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_System_Threading"] }

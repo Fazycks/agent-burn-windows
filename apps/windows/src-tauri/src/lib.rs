@@ -290,22 +290,27 @@ fn open_settings(app: &AppHandle, tab: Option<String>) {
     }
     let query = tab.map(|t| format!("&tab={t}")).unwrap_or_default();
     let url = app_url(app, &format!("settings{query}"));
-    if let Ok(window) = WebviewWindowBuilder::new(app, "settings", url)
-        .title("Agent Burn Settings")
-        .inner_size(560.0, 600.0)
-        .resizable(false)
-        .maximizable(false)
-        .minimizable(false)
-        .decorations(false)
-        .shadow(true)
-        .visible(false)
-        .center()
-        .additional_browser_args(BROWSER_ARGS)
-        .build()
-    {
-        let _ = window.show();
-        let _ = window.set_focus();
-    }
+    // Building a WebView2 window inside a synchronous command or an event handler (the
+    // gear button, the tray menu) deadlocks the main thread, so build from another thread.
+    let app = app.clone();
+    std::thread::spawn(move || {
+        if let Ok(window) = WebviewWindowBuilder::new(&app, "settings", url)
+            .title("Agent Burn Settings")
+            .inner_size(560.0, 600.0)
+            .resizable(false)
+            .maximizable(false)
+            .minimizable(false)
+            .decorations(false)
+            .shadow(true)
+            .visible(false)
+            .center()
+            .additional_browser_args(BROWSER_ARGS)
+            .build()
+        {
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+    });
 }
 
 /// The dashboard window; built here rather than in tauri.conf.json so its URL carries the version.

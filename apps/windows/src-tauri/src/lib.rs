@@ -1,6 +1,7 @@
 mod background;
 mod cli;
 mod quota;
+mod startup;
 mod storage;
 
 use std::collections::HashMap;
@@ -8,7 +9,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use serde::Serialize;
-use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{
     AppHandle, Emitter, Manager, PhysicalPosition, Rect, WebviewUrl, WebviewWindow,
@@ -167,6 +168,27 @@ async fn background_set(enabled: bool) -> Result<String, String> {
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+fn sync_startup(app: &AppHandle) -> bool {
+    let enabled = startup::is_enabled();
+    if let Some(item) = app.try_state::<CheckMenuItem<tauri::Wry>>() {
+        let _ = item.set_checked(enabled);
+    }
+    enabled
+}
+
+#[tauri::command]
+fn startup_status(app: AppHandle) -> bool {
+    sync_startup(&app)
+}
+
+#[tauri::command]
+fn startup_set(app: AppHandle, enabled: bool) -> Result<bool, String> {
+    let result = startup::set(enabled);
+    let enabled = sync_startup(&app);
+    let _ = app.emit("startup:changed", enabled);
+    result.map(|_| enabled)
 }
 
 #[tauri::command]
@@ -389,13 +411,15 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let check = MenuItem::with_id(app, "check", "Check Live Usage Now", true, Some("Ctrl+Shift+R"))?;
     let settings = MenuItem::with_id(app, "settings", "Settings…", true, Some("Ctrl+,"))?;
     let updates = MenuItem::with_id(app, "updates", "Check for Updates…", true, None::<&str>)?;
+    let launch = CheckMenuItem::with_id(app, "startup", "Launch at Startup", true, startup::is_enabled(), None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit Agent Burn", true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
     let separator2 = PredefinedMenuItem::separator(app)?;
     let menu = Menu::with_items(
         app,
-        &[&open, &separator, &refresh, &check, &settings, &updates, &separator2, &quit],
+        &[&open, &separator, &refresh, &check, &settings, &updates, &launch, &separator2, &quit],
     )?;
+    app.manage(launch);
     let icon = app.default_window_icon().cloned().expect("app icon");
     TrayIconBuilder::with_id(TRAY_ID)
         .icon(icon)
@@ -415,10 +439,17 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
                     serde_json::json!({ "type": "refreshAll", "hard": true }),
                 );
             }
+            "startup" => {
+                let _ = startup_set(app.clone(), !startup::is_enabled());
+            }
             "quit" => app.exit(0),
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
+            // Task Manager can switch the entry off while the app runs.
+            if let TrayIconEvent::Click { button: MouseButton::Right, button_state: MouseButtonState::Down, .. } = event {
+                sync_startup(tray.app_handle());
+            }
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
                 button_state: MouseButtonState::Up,
@@ -453,10 +484,6 @@ pub fn run() {
                 open_dashboard(app);
             }
         }))
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            Some(vec!["--hidden"]),
-        ))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(AppState { popover: Mutex::new(PopoverState::default()) })
@@ -474,6 +501,8 @@ pub fn run() {
             quota_config_save,
             background_status,
             background_set,
+            startup_status,
+            startup_set,
             set_tray_status,
             show_dashboard,
             show_settings,
@@ -484,6 +513,7 @@ pub fn run() {
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
+            startup::repair();
             build_tray(&handle)?;
             let main = build_main(&handle);
             let _ = build_popover(&handle);

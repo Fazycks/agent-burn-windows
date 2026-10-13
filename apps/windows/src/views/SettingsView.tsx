@@ -1,6 +1,5 @@
 // SettingsView and its tabs (AppViews.swift).
 import { listen } from "@tauri-apps/api/event";
-import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEffect, useState, type ReactNode } from "react";
@@ -150,19 +149,22 @@ function LoginItemSettings() {
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (!native.isTauri()) return;
-    isEnabled()
+    native
+      .startupStatus()
       .then(setEnabled)
       .catch(() => setEnabled(false));
+    // The tray menu has the same switch.
+    const pending = listen<boolean>("startup:changed", (event) => setEnabled(event.payload));
+    return () => void pending.then((unlisten) => unlisten());
   }, []);
   const change = async (value: boolean) => {
     try {
-      if (value) await enable();
-      else await disable();
+      setEnabled(await native.startupSet(value));
       setError(null);
     } catch (e) {
       setError(`Could not change login behavior: ${errorText(e)}`);
+      setEnabled(await native.startupStatus().catch(() => false));
     }
-    setEnabled(await isEnabled().catch(() => false));
   };
   return (
     <Section

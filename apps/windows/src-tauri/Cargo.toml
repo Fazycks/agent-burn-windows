@@ -1,6 +1,6 @@
 [package]
 name = "agent-burn-windows"
-version = "0.1.15"
+version = "0.1.16"
 description = "Agent Burn for Windows"
 authors = ["Agent Burn contributors"]
 license = "MIT"
@@ -16,7 +16,6 @@ tauri-build = { version = "=2.7.1", features = [] }
 
 [dependencies]
 tauri = { version = "=2.12.1", features = ["tray-icon", "image-png"] }
-tauri-plugin-autostart = "=2.7.0"
 tauri-plugin-dialog = "=2.8.1"
 tauri-plugin-opener = "=2.7.0"
 tauri-plugin-single-instance = "=2.5.2"
@@ -26,6 +25,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_System_Threading"] }
+windows-registry = "=0.6.1"
 
 [profile.release]
 codegen-units = 1

@@ -1,6 +1,6 @@
 {
 	"name": "agent-burn-windows",
-	"version": "0.1.15",
+	"version": "0.1.16",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -13,7 +13,6 @@
 	},
 	"dependencies": {
 		"@tauri-apps/api": "catalog:windows",
-		"@tauri-apps/plugin-autostart": "catalog:windows",
 		"@tauri-apps/plugin-dialog": "catalog:windows",
 		"@tauri-apps/plugin-opener": "catalog:windows",
 		"lucide-react": "catalog:docs",

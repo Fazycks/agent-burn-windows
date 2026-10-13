@@ -60,6 +60,11 @@ export const backgroundStatus = () => invoke<BackgroundStatus>("background_statu
 export const backgroundSet = (enabled: boolean) =>
   invoke<BackgroundStatus>("background_set", { enabled });
 
+export const startupStatus = () => invoke<boolean>("startup_status");
+
+/** Resolves to the state actually registered, which the tray menu mirrors. */
+export const startupSet = (enabled: boolean) => invoke<boolean>("startup_set", { enabled });
+
 export const setTrayStatus = (text: string) => invoke<void>("set_tray_status", { text });
 
 export const showDashboard = () => invoke<void>("show_dashboard");

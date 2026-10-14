@@ -48,7 +48,7 @@ export function SettingsView() {
             {title}
           </span>
         </div>
-        <div style={{ position: "absolute", top: 0, right: 0 }}>
+        <div style={{ position: "absolute", top: 0, right: 0, height: 30 }}>
           <WindowControls minimize={false} maximize={false} />
         </div>
         <div role="tablist" style={{ display: "flex", justifyContent: "center", gap: 2 }}>
